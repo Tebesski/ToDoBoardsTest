@@ -1,0 +1,25 @@
+{
+  "todoCards": [],
+  "progressCards": [
+    {
+      "id": "0282a37c-b3c8-4dab-bb44-6da801978ad5",
+      "data": {
+        "title": "Test",
+        "content": "Test",
+        "status": "progressCards"
+      }
+    }
+  ],
+  "doneCards": [],
+  "boardsList": [
+    {
+      "id": "85487fbe-0c2c-441f-b6eb-ce0d4a36c3b7",
+      "data": {
+        "boardName": "TestBoard",
+        "cards": [
+          "0282a37c-b3c8-4dab-bb44-6da801978ad5"
+        ]
+      }
+    }
+  ]
+}
