@@ -1,189 +1,232 @@
-import React, {
+import {
    useReducer,
    createContext,
    useContext,
    useState,
    useEffect,
 } from "react"
+
 import Cookies from "js-cookie"
 
-import { CardData } from "../components/CardComponent/Card"
+import {
+   BoardDataType,
+   CardData,
+   BoardContextType,
+   BoardProviderProps,
+   LoadingActionTypes,
+} from "../types/contextTypes"
 
-export type BoardDataType = {
-   data: {
-      boardName: string
-      cards: string[]
-   }
-   id: string
-}
+import { loadingReducer, initialLoadingState } from "../reducers/loadingReducer"
+import {
+   fetchReducer,
+   initialFetchReducerState,
+} from "../reducers/fetchReducer"
+import ACTIONS from "../types/actionTypes"
 
-type BoardContextType = {
-   todoArray: CardData[]
-   progressArray: CardData[]
-   doneArray: CardData[]
-   setArray: React.Dispatch<BoardReducerActions>
-   boardsList: BoardDataType[]
-   currentBoard: BoardDataType
-   setBoard: React.Dispatch<React.SetStateAction<BoardDataType>>
-   isLoading: boolean
-   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
-   BASE_URL: string
-}
-
-type BoardProviderProps = {
-   children: React.ReactElement
-}
-
-type BoardReducerState = {
-   todoCards: CardData[]
-   progressCards: CardData[]
-   doneCards: CardData[]
-   boardsList: BoardDataType[]
-}
-
-type BoardReducerActions =
-   | { type: "setTodo"; payload: CardData[] }
-   | { type: "setProgress"; payload: CardData[] }
-   | { type: "setDone"; payload: CardData[] }
-   | { type: "setBoardsList"; payload: BoardDataType[] }
-
-const BASE_ULR = "http://localhost:9000"
+const BASE_URL = "http://localhost:9000"
 
 const BoardContext = createContext<BoardContextType>({
    todoArray: [],
    progressArray: [],
    doneArray: [],
    boardsList: [],
-   currentBoard: { data: { boardName: "", cards: [] }, id: "" },
-   setBoard: () => {},
-   setIsLoading: () => {},
-   isLoading: false,
-   BASE_URL: BASE_ULR,
-   setArray: function (): void {},
+   currentBoard: { board_name: "", id: "" },
+   setCurrentBoard: () => {},
+   BASE_URL: BASE_URL,
+   boardsLoading: false,
+   todoCardsLoading: false,
+   progressCardsLoading: false,
+   doneCardsLoading: false,
+   dispatchCardsArray: () => {},
+   addCard: () => {},
+   editCard: () => {},
+   changeCardStatus: () => {},
+   deleteBoard: () => {},
+   setBoardsList: () => {},
 })
 
-const initialState: BoardReducerState = {
-   todoCards: [],
-   progressCards: [],
-   doneCards: [],
-   boardsList: [],
-}
-
-function reducer(state = initialState, action: BoardReducerActions) {
-   switch (action.type) {
-      case "setTodo":
-         return { ...state, todoCards: [...state.todoCards, ...action.payload] }
-
-      case "setProgress":
-         return {
-            ...state,
-            progressCards: [...state.progressCards, ...action.payload],
-         }
-
-      case "setDone":
-         return { ...state, doneCards: [...state.doneCards, ...action.payload] }
-
-      case "setBoardsList":
-         return {
-            ...state,
-            boardsList: [...state.boardsList, ...action.payload],
-         }
-
-      default:
-         throw new Error("Unknown action")
-   }
-}
+// BOARD PROVIDER
 
 function BoardProvider({ children }: BoardProviderProps) {
-   const [isLoading, setIsLoading] = useState(true)
    const [currentBoard, setCurrentBoard] = useState<BoardDataType>({
-      data: { boardName: "", cards: [] },
+      board_name: "",
       id: "",
    })
 
    const [{ todoCards, progressCards, doneCards, boardsList }, dispatch] =
-      useReducer(reducer, initialState)
+      useReducer(fetchReducer, initialFetchReducerState)
 
-   async function fetchCards() {
-      let urls = [
-         { url: "http://localhost:9000/todoCards", type: "todo" },
-         { url: "http://localhost:9000/progressCards", type: "progress" },
-         { url: "http://localhost:9000/doneCards", type: "done" },
-         { url: "http://localhost:9000/boardsList", type: "boards" },
-      ]
+   const [hasFetchedBoards, setHasFetchedBoards] = useState(false)
 
-      let requests = urls.map((item) =>
-         fetch(item.url).then((response) => response.json())
+   const dispatchLoading = (type: LoadingActionTypes, payload: boolean) => {
+      dispatchLoadingState({
+         type: ACTIONS[type],
+         payload,
+      })
+   }
+
+   const dispatchMultipleLoading = (
+      types: LoadingActionTypes[],
+      payload: boolean
+   ) => {
+      types.forEach((type) => {
+         dispatchLoading(type, payload)
+      })
+   }
+
+   const addCard = (newCard: CardData) => {
+      switch (newCard.status) {
+         case "todoCards":
+            dispatch({ type: ACTIONS.SET_TODO, payload: newCard })
+            break
+         case "progressCards":
+            dispatch({ type: ACTIONS.SET_PROGRESS, payload: newCard })
+            break
+         case "doneCards":
+            dispatch({ type: ACTIONS.SET_DONE, payload: newCard })
+            break
+         default:
+            throw new Error("Invalid card status")
+      }
+   }
+
+   const editCard = (cardId: string, updatedCard: CardData) => {
+      dispatch({ type: ACTIONS.EDIT_CARD, payload: { cardId, updatedCard } })
+   }
+
+   const changeCardStatus = (cardId: string, newStatus: string) => {
+      dispatch({
+         type: ACTIONS.CHANGE_CARD_STATUS,
+         payload: { cardId, newStatus },
+      })
+   }
+
+   const deleteBoard = (boardId: string) => {
+      dispatch({
+         type: ACTIONS.SET_BOARDS_LIST,
+         payload: boardsList.filter((board) => board.id !== boardId),
+      })
+
+      fetchBoards()
+   }
+
+   const setBoardsList = (newBoardsList: BoardDataType[]) => {
+      dispatch({ type: ACTIONS.SET_BOARDS_LIST, payload: newBoardsList })
+      console.log(newBoardsList)
+
+      fetchBoards()
+   }
+
+   const [
+      {
+         boardsLoading,
+         todoCardsLoading,
+         progressCardsLoading,
+         doneCardsLoading,
+      },
+      dispatchLoadingState,
+   ] = useReducer(loadingReducer, initialLoadingState)
+
+   async function fetchCards(boardId: string) {
+      dispatchMultipleLoading(
+         [
+            ACTIONS.SET_TODO_CARDS_LOADING,
+            ACTIONS.SET_PROGRESS_CARDS_LOADING,
+            ACTIONS.SET_DONE_CARDS_LOADING,
+         ],
+         true
       )
 
-      Promise.all(requests).then((responses) =>
-         responses.forEach((value, i) => {
-            const url = urls[i]
-            switch (url.type) {
-               case "todo":
+      try {
+         const result = await fetch(`${BASE_URL}/api/boards/${boardId}/cards`)
+         const cards = await result.json()
+
+         cards.forEach((value: CardData) => {
+            switch (value.status) {
+               case "todoCards":
                   dispatch({
-                     type: "setTodo",
+                     type: ACTIONS.SET_TODO,
                      payload: value,
                   })
                   break
 
-               case "progress":
+               case "progressCards":
                   dispatch({
-                     type: "setProgress",
+                     type: ACTIONS.SET_PROGRESS,
                      payload: value,
                   })
                   break
 
-               case "done":
+               case "doneCards":
                   dispatch({
-                     type: "setDone",
+                     type: ACTIONS.SET_DONE,
                      payload: value,
                   })
-                  break
-
-               case "boards":
-                  dispatch({
-                     type: "setBoardsList",
-                     payload: value,
-                  })
-                  setIsLoading(false)
                   break
 
                default:
                   throw new Error("No such action")
             }
          })
-      )
+      } catch (error) {
+         console.error("Failed to fetch cards:", error)
+      } finally {
+         dispatchMultipleLoading(
+            [
+               ACTIONS.SET_TODO_CARDS_LOADING,
+               ACTIONS.SET_PROGRESS_CARDS_LOADING,
+               ACTIONS.SET_DONE_CARDS_LOADING,
+            ],
+            false
+         )
+      }
    }
 
-   useEffect(
-      function () {
-         if (isLoading && boardsList.length < 1) {
-            const timeout = setTimeout(() => {
-               fetchCards()
-            }, 0)
+   async function fetchBoards() {
+      dispatchLoading(ACTIONS.SET_BOARDS_LOADING, true)
+      console.log(boardsLoading)
 
-            return () => {
-               clearTimeout(timeout)
-            }
-         }
-      },
-      [isLoading, boardsList, todoCards, progressCards, doneCards]
-   )
+      try {
+         const res = await fetch(`${BASE_URL}/api/boards`)
+         const data = await res.json()
+
+         dispatch({
+            type: ACTIONS.SET_BOARDS_LIST,
+            payload: data,
+         })
+      } catch (error) {
+         console.error("Failed to fetch boards:", error)
+      } finally {
+         dispatchLoading(ACTIONS.SET_BOARDS_LOADING, false)
+         console.log(boardsLoading)
+      }
+   }
 
    useEffect(() => {
-      if (Cookies.get("IlyaSemikashevKanbanBoard_BoardId") !== undefined) {
-         const currentBoard = boardsList.find(
-            (board) =>
-               board.id === Cookies.get("IlyaSemikashevKanbanBoard_BoardId")
-         )
+      if (currentBoard.id) {
+         dispatch({ type: ACTIONS.RESET })
+         fetchCards(currentBoard.id)
+      }
+   }, [currentBoard])
+
+   useEffect(() => {
+      if (boardsLoading && boardsList.length < 1 && !hasFetchedBoards) {
+         fetchBoards()
+         setHasFetchedBoards(true)
+      }
+   }, [boardsLoading, hasFetchedBoards])
+
+   useEffect(() => {
+      const boardId = Cookies.get("IlyaSemikashevKanbanBoard_BoardId")
+      if (boardId !== undefined) {
+         const currentBoard = boardsList.find((board) => board.id === boardId)
          if (currentBoard !== undefined) {
             setCurrentBoard(currentBoard)
          }
       } else if (boardsList.length > 0) {
          setCurrentBoard(boardsList[0])
       }
-   }, [boardsList.length, currentBoard])
+   }, [boardsList])
 
    return (
       <BoardContext.Provider
@@ -191,13 +234,20 @@ function BoardProvider({ children }: BoardProviderProps) {
             todoArray: todoCards,
             progressArray: progressCards,
             doneArray: doneCards,
-            setArray: dispatch,
             boardsList: boardsList,
-            isLoading: isLoading,
             currentBoard: currentBoard,
-            setBoard: setCurrentBoard,
-            setIsLoading: setIsLoading,
-            BASE_URL: BASE_ULR,
+            setCurrentBoard: setCurrentBoard,
+            BASE_URL: BASE_URL,
+            boardsLoading: boardsLoading,
+            todoCardsLoading: todoCardsLoading,
+            progressCardsLoading: progressCardsLoading,
+            doneCardsLoading: doneCardsLoading,
+            dispatchCardsArray: dispatch,
+            addCard: addCard,
+            editCard: editCard,
+            changeCardStatus: changeCardStatus,
+            deleteBoard: deleteBoard,
+            setBoardsList: setBoardsList,
          }}
       >
          {children}

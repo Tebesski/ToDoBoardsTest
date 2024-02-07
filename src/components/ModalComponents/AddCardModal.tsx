@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react"
-import { v4 as uuidv4 } from "uuid"
-
+import { useState } from "react"
 import {
    Alert,
    Button,
@@ -11,172 +9,90 @@ import {
    MenuItem,
    Select,
    TextField,
+   SelectChangeEvent,
 } from "@mui/material"
 import AddIcon from "@mui/icons-material/Add"
+
 import { useBoard } from "../../contexts/BoardContext"
-import { CardData } from "../CardComponent/Card"
-import { BoardDataType } from "../../contexts/BoardContext"
-import { SelectChangeEvent } from "@mui/material"
+import { CardData } from "../../types/contextTypes"
 
-export default function AddCardModal({ columnType }: { columnType: string }) {
-   const { isLoading, setIsLoading, BASE_URL, currentBoard } = useBoard()
-   const [alert, setAlert] = useState(false)
-
+export default function AddCardModal({
+   columnType,
+}: {
+   columnType: "todoCards" | "progressCards" | "doneCards"
+}) {
+   const { BASE_URL, currentBoard, addCard } = useBoard()
    const [open, setOpen] = useState(false)
    const [cardData, setCardData] = useState<CardData>({
-      data: {
-         title: "",
-         content: "",
-         status: "",
-      },
+      title: "",
+      content: "",
+      status: "",
       id: "",
    })
-   const [newCard, setNewCard] = useState<CardData>(cardData)
+   const [alert, setAlert] = useState(false)
 
-   const handleOpenAddCardModal = () => setOpen(true)
-   const handleCloseAddCardModal = () => setOpen(false)
+   const handleOpenAddCardModal = () => {
+      setCardData({
+         ...cardData,
+         status: columnType,
+      })
+      setOpen(true)
+   }
 
-   function handleSetNewCard() {
-      if (cardData.data.title.length < 1 && cardData.data.status) {
+   const handleSetNewCard = async () => {
+      if (!cardData.title || !cardData.status) {
          setAlert(true)
-
          setTimeout(() => {
             setAlert(false)
          }, 3000)
          return
       }
-      setCardData({
-         data: {
-            ...cardData.data,
-         },
-         id: uuidv4(),
-      })
-
-      setOpen(false)
-   }
-
-   async function handleAddCardToDb(url: string) {
-      setIsLoading(true)
-      const cardJson = JSON.stringify(newCard)
-
-      await fetch(`${BASE_URL}/${url}`, {
-         method: "POST",
-         headers: {
-            "Content-Type": "application/json",
-         },
-         body: cardJson,
-      })
-
-      const oldBoardJson = await fetch(
-         `${BASE_URL}/boardsList/${currentBoard.id}`
-      )
-      const oldBoard: BoardDataType = await oldBoardJson.json()
-
-      const updatedBoard: BoardDataType = {
-         ...oldBoard,
-         data: {
-            ...oldBoard.data,
-            cards: [...oldBoard.data.cards, newCard.id],
-         },
-      }
-
-      await fetch(`${BASE_URL}/boardsList/${currentBoard.id}`, {
-         method: "PATCH",
-         headers: {
-            "Content-Type": "application/json",
-         },
-         body: JSON.stringify(updatedBoard),
-      })
-
-      setIsLoading(false)
-   }
-
-   useEffect(() => {
-      if (cardData.id.length > 0) {
-         setNewCard(cardData)
-      }
-   }, [cardData.id])
-
-   useEffect(() => {
-      if (newCard.id) {
-         handleAddCardToDb(columnType)
-         setNewCard({
-            data: {
-               title: "",
-               content: "",
-               status: "",
+      try {
+         const response = await fetch(`${BASE_URL}/api/cards`, {
+            method: "POST",
+            headers: {
+               "Content-Type": "application/json",
             },
-            id: "",
+            body: JSON.stringify({
+               ...cardData,
+               board_id: currentBoard.id,
+            }),
          })
-      }
-   }, [newCard.id])
-
-   function handleOnChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
-      const value = event.target.value
-      const fieldId = event.target.id
-
-      switch (fieldId) {
-         case "cardTitle":
-            setCardData({
-               data: {
-                  ...cardData.data,
-                  title: value,
-               },
-               id: "",
-            })
-            break
-         case "cardContent":
-            setCardData({
-               data: {
-                  ...cardData.data,
-                  content: value,
-               },
-               id: "",
-            })
-            break
-
-         default:
-            break
+         if (response.ok) {
+            const newCard = await response.json()
+            addCard(newCard)
+            setOpen(false)
+         } else {
+            console.error("Failed to add card:", response.statusText)
+         }
+      } catch (error) {
+         console.error("Error adding card:", error)
       }
    }
 
-   function handleSelectChange(event: SelectChangeEvent) {
-      if (event.target.value === null) return
+   const handleOnChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const { id, value } = event.target
       setCardData({
-         data: {
-            ...cardData.data,
-            status: event.target.value,
-         },
-         id: "",
+         ...cardData,
+         [id]: value,
       })
    }
 
-   useEffect(() => {
-      if (open) {
-         setCardData({
-            data: {
-               ...cardData.data,
-               status: columnType,
-            },
-            id: "",
-         })
-      }
-   }, [open])
+   const handleSelectChange = (event: SelectChangeEvent) => {
+      setCardData({
+         ...cardData,
+         status: event.target.value,
+      })
+   }
 
    return (
       <>
-         {isLoading ? null : (
-            <Button
-               variant="outlined"
-               onClick={handleOpenAddCardModal}
-               id="creature_add_button"
-            >
-               <AddIcon fontSize="large" />
-            </Button>
-         )}
+         <Button variant="outlined" onClick={handleOpenAddCardModal}>
+            <AddIcon fontSize="large" />
+         </Button>
          <Dialog
             open={open}
-            onClose={handleCloseAddCardModal}
+            onClose={() => setOpen(false)}
             aria-labelledby="modal-modal-title"
             aria-describedby="modal-modal-description"
             fullWidth={true}
@@ -196,16 +112,15 @@ export default function AddCardModal({ columnType }: { columnType: string }) {
                <TextField
                   autoFocus
                   margin="dense"
-                  id="cardTitle"
+                  id="title"
                   label="TITLE *"
                   type="text"
                   onChange={handleOnChange}
-                  value={cardData.data.title}
+                  value={cardData.title}
                   size="small"
                />
-
                <TextField
-                  id="cardContent"
+                  id="content"
                   label="Task details"
                   multiline
                   rows={4}
@@ -213,10 +128,9 @@ export default function AddCardModal({ columnType }: { columnType: string }) {
                   variant="filled"
                   onChange={handleOnChange}
                />
-
                <Select
                   sx={{ mt: 2 }}
-                  id="cardStatus"
+                  id="status"
                   defaultValue={columnType}
                   onChange={handleSelectChange}
                >
@@ -224,17 +138,17 @@ export default function AddCardModal({ columnType }: { columnType: string }) {
                   <MenuItem value="progressCards">IN PROGRESS</MenuItem>
                   <MenuItem value="doneCards">DONE</MenuItem>
                </Select>
-
                <Button size="large" sx={{ mt: 1 }} onClick={handleSetNewCard}>
                   ADD A NEW CARD
                </Button>
             </DialogContent>
-
-            {alert ? (
+            {alert && (
                <Fade in={alert}>
-                  <Alert severity="error">Please, enter card's title</Alert>
+                  <Alert severity="error">
+                     Please, enter card's title and status
+                  </Alert>
                </Fade>
-            ) : null}
+            )}
          </Dialog>
       </>
    )

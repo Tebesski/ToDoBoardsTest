@@ -1,4 +1,7 @@
-import * as React from "react"
+import { useRef, useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import Cookies from "js-cookie"
+
 import Box from "@mui/material/Box"
 import Collapse from "@mui/material/Collapse"
 import IconButton from "@mui/material/IconButton"
@@ -11,34 +14,91 @@ import TableRow from "@mui/material/TableRow"
 import Paper from "@mui/material/Paper"
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp"
-import { BoardDataType, useBoard } from "../../contexts/BoardContext"
 import { Button } from "@mui/material"
-import { useRef, useState } from "react"
-import EditBoardModal from "./EditBoardModal"
 
-function Row(props: { row: BoardDataType; setViewBoardOpen: Function }) {
-   const { row, setViewBoardOpen } = props
+import { useBoard } from "../../contexts/BoardContext"
+import EditBoardModal from "./EditBoardModal"
+import { BoardDataType } from "../../types/contextTypes"
+
+function Row(props: { row: BoardDataType }) {
+   const { row } = props
+   const navigate = useNavigate()
+
+   const {
+      BASE_URL,
+      boardsLoading,
+      deleteBoard,
+      boardsList,
+      setCurrentBoard,
+      currentBoard,
+   } = useBoard()
+
    const [open, setOpen] = useState(false)
    const [boardEdit, setBoardEdit] = useState(false)
+   const [cardsCount, setCardsCount] = useState<number>(0)
+
    const nameRef = useRef<HTMLElement>()
-   const { BASE_URL, boardsList } = useBoard()
 
+   // FETCH CARDS COUNT BY BOARD
+   async function fetchCardsCountByBoard(): Promise<number> {
+      const response = await fetch(
+         `${BASE_URL}/api/boards/${row.id}/cards-count`
+      )
+      const data = await response.json()
+      return data.cards_count
+   }
+
+   // SET CARDS COUNT
+   useEffect(() => {
+      async function fetchData() {
+         if (!boardsLoading) {
+            const count = await fetchCardsCountByBoard()
+            setCardsCount(count)
+         }
+      }
+      fetchData()
+   }, [row.id, boardsLoading])
+
+   // DELETE BOARD
    async function handleDeleteBoard() {
-      if (nameRef) {
-         const board = boardsList.find(
-            (board) => board.id === nameRef.current?.dataset.boardid
-         )
-
-         await fetch(`${BASE_URL}/boardsList/${board!.id}`, {
+      try {
+         await fetch(`${BASE_URL}/api/boards/${row.id}`, {
             method: "DELETE",
          })
 
-         setViewBoardOpen(false)
+         const updatedBoardsList = boardsList.filter(
+            (board) => board.id !== row.id
+         )
+         deleteBoard(updatedBoardsList.map((board) => board.id).join(","))
+
+         const currentBoardIndex = boardsList.findIndex(
+            (board) => board.id === currentBoard.id
+         )
+         let nextBoard = boardsList[currentBoardIndex + 1] // get next board
+
+         // If next board doesn't exist, get the previous board
+         if (!nextBoard) {
+            nextBoard = boardsList[currentBoardIndex - 1]
+         }
+
+         if (nextBoard) {
+            // If there's a next board, navigate to it
+            setCurrentBoard(nextBoard)
+            Cookies.set("IlyaSemikashevKanbanBoard_BoardId", nextBoard.id) // Update the cookie
+            navigate(`/boards/${nextBoard.id}`)
+         } else {
+            // If there are no more boards, navigate to the root route
+            setCurrentBoard({ id: "", board_name: "" })
+            Cookies.remove("IlyaSemikashevKanbanBoard_BoardId") // Remove the cookie
+            navigate("/0")
+         }
+      } catch (error) {
+         console.error("Error deleting board:", error)
       }
    }
 
    return (
-      <React.Fragment>
+      <>
          <TableRow sx={{ "& > *": { borderBottom: "unset" } }}>
             <TableCell
                component="th"
@@ -47,9 +107,9 @@ function Row(props: { row: BoardDataType; setViewBoardOpen: Function }) {
                ref={nameRef}
                data-boardid={row.id}
             >
-               {row.data.boardName}
+               {row.board_name}
             </TableCell>
-            <TableCell align="center">{row.data.cards.length}</TableCell>
+            <TableCell align="center">{cardsCount}</TableCell>
             <TableCell align="center">
                <IconButton
                   aria-label="expand row"
@@ -106,13 +166,12 @@ function Row(props: { row: BoardDataType; setViewBoardOpen: Function }) {
             setBoardEdit={setBoardEdit}
             currentId={nameRef.current?.dataset.boardid}
          />
-      </React.Fragment>
+      </>
    )
 }
 
-export default function BoardsTable(props: { setViewBoardOpen: Function }) {
+export default function BoardsTable() {
    const { boardsList } = useBoard()
-   const rows = boardsList
 
    return (
       <TableContainer component={Paper}>
@@ -125,12 +184,8 @@ export default function BoardsTable(props: { setViewBoardOpen: Function }) {
                </TableRow>
             </TableHead>
             <TableBody>
-               {rows.map((row) => (
-                  <Row
-                     key={row.id + `1`}
-                     row={row}
-                     setViewBoardOpen={props.setViewBoardOpen}
-                  />
+               {boardsList.map((row) => (
+                  <Row key={row.id + `1`} row={row} />
                ))}
             </TableBody>
          </Table>

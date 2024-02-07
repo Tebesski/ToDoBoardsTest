@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react"
-import { v4 as uuidv4 } from "uuid"
-
+import { useState } from "react"
 import {
    Box,
    Button,
@@ -14,7 +12,6 @@ import {
 } from "@mui/material"
 
 import { useBoard } from "../../contexts/BoardContext"
-import { BoardDataType } from "../../contexts/BoardContext"
 import BoardsTable from "./BoardsTable"
 
 type ViewBoardsModalPropsType = {
@@ -26,56 +23,50 @@ export default function ViewBoardsModal({
    viewBoardOpen,
    setViewBoardOpen,
 }: ViewBoardsModalPropsType) {
-   const { boardsList, setIsLoading, BASE_URL } = useBoard()
-
-   const [newBoard, setNewBoard] = useState<BoardDataType>({
-      data: {
-         boardName: "",
-         cards: [],
-      },
-      id: "",
-   })
+   const { BASE_URL, setBoardsList, boardsList } = useBoard()
 
    const [boardName, setBoardName] = useState("")
-
    const [success, setSuccess] = useState(false)
    const [error, setError] = useState(false)
 
-   async function handleSetNewBoard() {
-      if (boardName) {
-         setSuccess(true)
-         setTimeout(() => {
-            setSuccess(false)
-         }, 2000)
-
-         setBoardName("")
-         setNewBoard((oldValue) => {
-            return { data: { ...oldValue.data }, id: uuidv4() }
-         })
-      } else {
+   // ADD NEW BOARD
+   async function handleAddNewBoard(name: string) {
+      if (!boardName) {
          setError(true)
          setTimeout(() => {
             setError(false)
-         }, 2000)
+         }, 1000)
+         return
+      }
+      try {
+         const response = await fetch(`${BASE_URL}/api/boards`, {
+            method: "POST",
+            headers: {
+               "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ boardName: name }),
+         })
+         const data = await response.json()
+         if (data.success) {
+            console.log(boardName)
+            setBoardName("")
+            setSuccess(true)
+            setTimeout(() => {
+               setSuccess(false)
+            }, 1000)
+
+            setBoardsList([
+               ...boardsList,
+               {
+                  id: data.boardId,
+                  board_name: name,
+               },
+            ])
+         }
+      } catch (error) {
+         console.error("Error creating new board:", error)
       }
    }
-
-   useEffect(() => {
-      if (newBoard.id) {
-         async function handleAddNewBoard() {
-            setIsLoading(true)
-            const boardJson = JSON.stringify(newBoard)
-            await fetch(`${BASE_URL}/boardsList`, {
-               method: "POST",
-               body: boardJson,
-            })
-            setIsLoading(false)
-         }
-         handleAddNewBoard()
-      }
-   }, [newBoard.id])
-
-   const table = <BoardsTable setViewBoardOpen={setViewBoardOpen} />
 
    return (
       <Dialog
@@ -102,18 +93,7 @@ export default function ViewBoardsModal({
                   value={boardName}
                   placeholder="Enter a title of the new board..."
                   sx={{ width: 1 / 2 }}
-                  onChange={(e) => {
-                     setBoardName(e.target.value)
-                     setNewBoard((oldValue) => {
-                        return {
-                           ...oldValue,
-                           data: {
-                              ...oldValue.data,
-                              boardName: e.target.value,
-                           },
-                        }
-                     })
-                  }}
+                  onChange={(e) => setBoardName(e.target.value)}
                />
                {error ? (
                   <Grow in={error}>
@@ -150,7 +130,7 @@ export default function ViewBoardsModal({
                ) : (
                   <Button
                      sx={{ ml: 1, minWidth: "160px" }}
-                     onClick={handleSetNewBoard}
+                     onClick={() => handleAddNewBoard(boardName)}
                   >
                      ADD A NEW BOARD
                   </Button>
@@ -159,13 +139,7 @@ export default function ViewBoardsModal({
             <Divider sx={{ borderBottomWidth: 3, mt: 2, mb: 2 }} />
             <Box>
                <Typography variant="h6">YOUR BOARDS:</Typography>
-               {boardsList.length > 0 ? (
-                  table
-               ) : (
-                  <Typography>
-                     You haven't created any board, yet. Let's fix it! ;)
-                  </Typography>
-               )}
+               <BoardsTable />
             </Box>
          </DialogContent>
       </Dialog>

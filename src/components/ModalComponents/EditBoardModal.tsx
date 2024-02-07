@@ -1,9 +1,10 @@
+import { useState } from "react"
+
 import { Box, Button, Modal, TextField } from "@mui/material"
 import DoneOutlineIcon from "@mui/icons-material/DoneOutline"
 import BlockIcon from "@mui/icons-material/Block"
 
-import { BoardDataType, useBoard } from "../../contexts/BoardContext"
-import { useState } from "react"
+import { useBoard } from "../../contexts/BoardContext"
 
 const style = {
    position: "absolute" as "absolute",
@@ -16,61 +17,53 @@ const style = {
    p: 2,
 }
 
-export default function EditBoardModal(props: {
+type EditBoardModalType = {
    boardEdit: boolean
    setBoardEdit: Function
    currentId: string | null | undefined
-}) {
-   const { boardEdit, setBoardEdit, currentId } = props
-   const [boardTitle, setBoardTitle] = useState<string>()
+}
 
-   const { BASE_URL, boardsList } = useBoard()
+export default function EditBoardModal(props: EditBoardModalType) {
+   const { boardEdit, setBoardEdit, currentId } = props
+   const [boardName, setBoardName] = useState<string>("")
+   const { BASE_URL, setBoardsList, boardsList } = useBoard()
 
    function handleCloseModal() {
       setBoardEdit(false)
-      setBoardTitle("")
-   }
-
-   function handleChangeTitle(event: React.ChangeEvent<HTMLTextAreaElement>) {
-      setBoardTitle(event.target.value)
+      setBoardName("")
    }
 
    async function handleSubmitBoardEditing() {
-      if (boardTitle) {
-         const board = boardsList.find((board) => board.id === currentId)
-
-         async function updateBoardTitle() {
-            const response = await fetch(`${BASE_URL}/boardsList/${board?.id}`)
-            const existingData = await response.json()
-
-            const updatedData: BoardDataType = {
-               ...existingData,
-               data: {
-                  ...existingData.data,
-                  boardName: boardTitle,
-               },
-            }
-
-            await fetch(`${BASE_URL}/boardsList/${board?.id}`, {
+      if (boardName) {
+         try {
+            await fetch(`${BASE_URL}/api/boards/${currentId}`, {
                method: "PATCH",
                headers: {
                   "Content-Type": "application/json",
                },
-               body: JSON.stringify(updatedData),
+               body: JSON.stringify({ boardName }),
             })
 
-            setBoardTitle("")
+            const updatedBoardsList = boardsList.map((board) =>
+               board.id === currentId
+                  ? { ...board, board_name: boardName }
+                  : board
+            )
+            setBoardsList(updatedBoardsList)
+            setBoardName("")
             setBoardEdit(false)
+         } catch (error) {
+            console.error("Error updating board title:", error)
          }
-         updateBoardTitle()
       } else {
+         return
       }
    }
 
    return (
       <Modal
          open={boardEdit}
-         onClose={() => handleCloseModal()}
+         onClose={handleCloseModal}
          aria-labelledby="modal-modal-title"
          aria-describedby="modal-modal-description"
       >
@@ -79,22 +72,18 @@ export default function EditBoardModal(props: {
                placeholder="Enter new title..."
                size="small"
                autoFocus
-               onChange={handleChangeTitle}
-               value={boardTitle}
+               onChange={(e) => setBoardName(e.target.value)}
+               value={boardName}
             />
             <div style={{ marginLeft: "3px" }}>
                <Button
                   color="success"
                   size="small"
-                  onClick={() => handleSubmitBoardEditing()}
+                  onClick={handleSubmitBoardEditing}
                >
                   <DoneOutlineIcon />
                </Button>
-               <Button
-                  color="error"
-                  size="small"
-                  onClick={() => handleCloseModal()}
-               >
+               <Button color="error" size="small" onClick={handleCloseModal}>
                   <BlockIcon />
                </Button>
             </div>

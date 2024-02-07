@@ -1,3 +1,4 @@
+import { useState } from "react"
 import {
    Card as CardMUI,
    CardContent,
@@ -10,53 +11,54 @@ import {
    Divider,
    CardActionArea,
    TextField,
+   SelectChangeEvent,
+   Alert,
 } from "@mui/material"
-import { SelectChangeEvent } from "@mui/material"
-import { useEffect, useState } from "react"
-import { BoardDataType, useBoard } from "../../contexts/BoardContext"
+
+import { useBoard } from "../../contexts/BoardContext"
 import ViewCardModal from "../ModalComponents/ViewCardModal"
 
-export type CardData = {
-   data: {
-      title: string
-      content: string
-      status: string
-   }
-   id: string
-}
+import { CardData } from "../../types/contextTypes"
+import ACTIONS from "../../types/actionTypes"
 
-export default function Card({ data, id }: CardData) {
-   const { BASE_URL, currentBoard } = useBoard()
+export default function Card({ content, status, title, id }: CardData) {
+   const { BASE_URL, currentBoard, changeCardStatus, dispatchCardsArray } =
+      useBoard()
+
    const [titleEdit, setTitleEdit] = useState({ on: false, title: "" })
-   const [changeStatus, setChangeStatus] = useState(false)
-   const [content, setContent] = useState({
-      title: "",
-      content: "",
-      status: "",
+   const [card, setCard] = useState({
+      title: title,
+      content: content,
+      status: status,
    })
 
    const [viewCard, setViewCard] = useState(false)
-   const [editCard, setEditCard] = useState(false)
+   const [startEditCard, setStartEditCard] = useState(false)
+   const [titleError, setTitleError] = useState(false)
 
-   const card = (
+   const Card = (
       <Box
          sx={{
             display: "flex",
             flexDirection: "column",
          }}
-         id={id}
       >
          <CardContent sx={{ maxHeight: 120, backgroundColor: "whitesmoke" }}>
             {titleEdit.on ? (
                <div style={{ display: "flex" }}>
                   <TextField
-                     variant="standard"
+                     variant="filled"
                      size="small"
                      autoFocus
                      onChange={handleChangeTitle}
                      value={titleEdit.title}
+                     InputProps={{
+                        disableUnderline: true,
+                     }}
+                     hiddenLabel
+                     sx={{ outline: "1px solid lightblue" }}
                   />
-                  <IconButton onClick={handleSubmitTitleEdit}>
+                  <IconButton onClick={handleSubmitPreviewTitleEdit}>
                      <Icon baseClassName="fas" className="fa-circle-check" />
                   </IconButton>
                   <IconButton onClick={handleExitTitleEdit}>
@@ -64,16 +66,22 @@ export default function Card({ data, id }: CardData) {
                   </IconButton>
                </div>
             ) : (
-               <CardActionArea onClick={handleStartTitleEditing}>
-                  <Typography sx={{ fontSize: 14, p: 1 }}>
-                     {data.title}
-                  </Typography>
+               <CardActionArea
+                  onClick={
+                     titleError ? () => {} : handleStartPreviewTitleEditing
+                  }
+               >
+                  {titleError ? (
+                     <Alert severity="error">Title cannot be blank!</Alert>
+                  ) : (
+                     <Typography sx={{ p: 1 }}>{title}</Typography>
+                  )}
                </CardActionArea>
             )}
 
-            <Divider sx={{ mb: 1 }} />
+            <Divider sx={{ mb: 1, bgcolor: titleEdit.on ? "lightblue" : "" }} />
 
-            <CardActionArea onClick={handleExpandCard}>
+            <CardActionArea onClick={() => setViewCard(true)}>
                <Paper
                   variant="outlined"
                   square
@@ -84,7 +92,7 @@ export default function Card({ data, id }: CardData) {
                      borderColor: "rgba(0,0,0,0.5)",
                   }}
                >
-                  <Typography sx={{ fontSize: 14 }}>{data.content}</Typography>
+                  <Typography sx={{ fontSize: 14 }}>{content}</Typography>
                </Paper>
             </CardActionArea>
 
@@ -106,22 +114,20 @@ export default function Card({ data, id }: CardData) {
       </Box>
    )
 
+   // START EDITING CARD FROM PEN TO SQUARE VIA CARD'S PREVIEW
    function handleStartEditCard() {
-      setContent({
-         title: data.title,
-         content: data.content,
-         status: data.status,
+      setCard({
+         title: title,
+         content: content,
+         status: status,
       })
       setViewCard(true)
-      setEditCard(true)
+      setStartEditCard(true)
    }
 
-   function handleExitEditCard() {
-      setEditCard(false)
-   }
-
+   // START CHANING CARD CONTENT VIA CARD MODAL
    function handleChangeContent(event: React.ChangeEvent<HTMLTextAreaElement>) {
-      setContent((oldValue) => {
+      setCard((oldValue) => {
          return {
             title: oldValue.title,
             content: event.target.value,
@@ -130,10 +136,11 @@ export default function Card({ data, id }: CardData) {
       })
    }
 
+   // START CHANGING CARD TITLE VIA CARD MODAL
    function handleChangeContentTitle(
       event: React.ChangeEvent<HTMLTextAreaElement>
    ) {
-      setContent((oldValue) => {
+      setCard((oldValue) => {
          return {
             title: event.target.value,
             content: oldValue.content,
@@ -142,206 +149,137 @@ export default function Card({ data, id }: CardData) {
       })
    }
 
+   // CHANGE STATUS
    function handleChangeContentStatus(event: SelectChangeEvent) {
-      setContent((oldValue) => {
+      const newStatus = event.target.value
+
+      setCard((oldValue) => {
          return {
-            title: oldValue.title,
-            content: oldValue.content,
-            status: event.target.value,
+            ...oldValue,
+            status: newStatus,
          }
       })
 
       async function handleSubmitNewStatus() {
-         const response = await fetch(`${BASE_URL}/${data.status}/${id}`)
-         const existingData = await response.json()
-
-         const updatedData = await {
-            ...existingData,
-            data: {
-               ...existingData.data,
-               status: event.target.value,
-            },
+         try {
+            await fetch(`${BASE_URL}/api/cards/${id}/status`, {
+               method: "PATCH",
+               headers: {
+                  "Content-Type": "application/json",
+               },
+               body: JSON.stringify({ status: newStatus }),
+            })
+            changeCardStatus(id, newStatus)
+         } catch (error) {
+            console.error("Error updating card status:", error)
          }
-
-         await fetch(`${BASE_URL}/${data.status}/${id}`, {
-            method: "PATCH",
-            headers: {
-               "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updatedData),
-         })
-
-         setChangeStatus(true)
       }
 
       handleSubmitNewStatus()
    }
 
-   async function handleSubmitEditChanges() {
-      const response = await fetch(`${BASE_URL}/${data.status}/${id}`)
-      const existingData = await response.json()
-
-      const updatedData = {
-         ...existingData,
-         data: {
-            ...existingData.data,
-            title: content.title,
-            content: content.content,
-            status: content.status,
-         },
-      }
-
-      await fetch(`${BASE_URL}/${data.status}/${id}`, {
-         method: "PATCH",
-         headers: {
-            "Content-Type": "application/json",
-         },
-         body: JSON.stringify(updatedData),
-      })
-
-      setEditCard(false)
-   }
-
-   function handleOpenViewCard() {
-      setViewCard(true)
-   }
-
-   function handleCloseViewCard() {
-      setViewCard(false)
-      setEditCard(false)
-   }
-
+   // REMOVE CARD VIA CARD'S PREVIEW INTERFACE
    async function handleRemoveCard() {
-      const boardJson = await fetch(`${BASE_URL}/boardsList/${currentBoard.id}`)
-      const boardData: BoardDataType = await boardJson.json()
+      try {
+         await fetch(`${BASE_URL}/api/boards/${currentBoard.id}/cards/${id}`, {
+            method: "DELETE",
+         })
 
-      const index = boardData.data.cards.findIndex((card) => card === id)
-
-      const _cards = boardData.data.cards
-         .slice(0, index)
-         .concat(boardData.data.cards.slice(index + 1))
-
-      const updatedCards: BoardDataType = {
-         ...boardData,
-         data: {
-            ...boardData.data,
-            cards: _cards,
-         },
+         dispatchCardsArray({
+            type: ACTIONS.REMOVE_CARD,
+            payload: { cardId: id },
+         })
+      } catch (error) {
+         console.error("Error removing card:", error)
       }
-
-      await fetch(`${BASE_URL}/${data.status}/${id}`, {
-         method: "DELETE",
-      })
-
-      await fetch(`${BASE_URL}/boardsList/${currentBoard.id}`, {
-         method: "PATCH",
-         headers: {
-            "Content-Type": "application/json",
-         },
-         body: JSON.stringify(updatedCards),
-      })
    }
 
-   function handleStartTitleEditing() {
+   // EDIT TITLE VIA CARD'S PREVIEW INTERFACE
+   function handleStartPreviewTitleEditing() {
       setTitleEdit(() => {
-         return { title: data.title, on: true }
+         return { title: title, on: true }
       })
    }
 
+   // EXIT TITLE EDIT VIA CARD'S PREVIEW INTERFACE AND SAVE PREVIOUS TITLE
    function handleExitTitleEdit() {
       setTitleEdit((oldValue) => {
          return { ...oldValue, on: false }
       })
    }
 
+   // START CHANGING TITLE VIA CARD'S PREVIEW INTERFACE
    function handleChangeTitle(event: React.ChangeEvent<HTMLTextAreaElement>) {
       setTitleEdit((oldValue) => {
          return { ...oldValue, title: event.target.value }
       })
    }
 
-   function handleSubmitTitleEdit() {
-      async function updateTitle() {
-         const response = await fetch(`${BASE_URL}/${data.status}/${id}`)
-         const existingData = await response.json()
-
-         const updatedData = {
-            ...existingData,
-            data: {
-               ...existingData.data,
-               title: titleEdit.title,
-            },
-         }
-
-         await fetch(`${BASE_URL}/${data.status}/${id}`, {
-            method: "PATCH",
-            headers: {
-               "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updatedData),
-         })
-
-         setTitleEdit((oldValue) => {
-            return { ...oldValue, on: false }
-         })
-      }
-
-      if (titleEdit.title.length > 0) {
-         updateTitle()
-      }
-   }
-
-   function handleExpandCard() {
-      setViewCard(true)
-   }
-
-   useEffect(() => {
-      if (changeStatus) {
-         async function handleSubmitNewStatus() {
-            const response = await fetch(`${BASE_URL}/${data.status}/${id}`)
-            const existingData = await response.json()
-            console.log(existingData)
-
-            fetch(`${BASE_URL}/${data.status}/${id}`, {
-               method: "DELETE",
-            })
-
-            fetch(`${BASE_URL}/${content.status}`, {
-               method: "POST",
+   // SUBMIT TITLE CHANGES VIA CARD'S PREVIEW INTERFACE TO DB
+   async function handleSubmitPreviewTitleEdit() {
+      try {
+         if (titleEdit.title.length > 0) {
+            const response = await fetch(`${BASE_URL}/api/cards/${id}/title`, {
+               method: "PATCH",
                headers: {
                   "Content-Type": "application/json",
                },
-               body: JSON.stringify(existingData),
+               body: JSON.stringify({ title: titleEdit.title }),
             })
-         }
-         handleSubmitNewStatus()
-         setChangeStatus(false)
-      }
-   }, [changeStatus])
 
-   const expand = (
+            if (response.ok) {
+               const updatedCard = {
+                  content: card.content,
+                  status: card.status,
+                  title: titleEdit.title,
+                  id: id,
+               }
+
+               dispatchCardsArray({
+                  type: ACTIONS.EDIT_CARD,
+                  payload: { cardId: id, updatedCard },
+               })
+
+               setTitleEdit((oldValue) => ({ ...oldValue, on: false }))
+            } else {
+               console.error(
+                  "Failed to update card title:",
+                  response.statusText
+               )
+            }
+         } else {
+            setTitleError(true)
+            setTimeout(() => {
+               setTitleError(false)
+            }, 1000)
+            setTitleEdit((oldValue) => ({ ...oldValue, on: false }))
+         }
+      } catch (error) {
+         console.error("Error updating card title:", error)
+      }
+   }
+
+   const Expand = (
       <ViewCardModal
-         data={data}
-         id={id}
-         isExpanded={viewCard}
-         openViewCard={handleOpenViewCard}
-         closeViewCard={handleCloseViewCard}
-         editCard={handleStartEditCard}
-         exitEdit={handleExitEditCard}
-         isBeingEdited={editCard}
-         submitChanges={handleSubmitEditChanges}
+         viewData={{ title: title, content: content, status: status }}
+         editData={{ ...card }}
+         cardId={id}
+         viewCard={viewCard}
+         setViewCard={setViewCard}
+         handleStartEditCard={handleStartEditCard}
+         setStartEditCard={setStartEditCard}
+         startEditCard={startEditCard}
          changeContent={handleChangeContent}
          changeTitle={handleChangeContentTitle}
          changeStatus={handleChangeContentStatus}
-         content={content}
       />
    )
 
    return (
       <Grid container direction="column">
          <CardMUI variant="outlined" square={true} sx={{ mt: 1 }}>
-            {card}
-            {expand}
+            {Card}
+            {Expand}
          </CardMUI>
       </Grid>
    )

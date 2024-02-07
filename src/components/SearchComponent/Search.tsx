@@ -1,30 +1,30 @@
 import React, { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { Autocomplete, Box, ListItemButton, TextField } from "@mui/material"
-import { useBoard } from "../../contexts/BoardContext"
+
 import Cookies from "js-cookie"
 import { v4 as uuiv4 } from "uuid"
-import { Link } from "react-router-dom"
+
+import { useBoard } from "../../contexts/BoardContext"
 
 export default function Search() {
-   const { boardsList, isLoading, setBoard, currentBoard } = useBoard()
+   const { boardsList, setCurrentBoard, currentBoard } = useBoard()
    const [searchOpen, setSearchOpen] = useState(false)
 
-   function onLinkClick(event: React.MouseEvent<HTMLDivElement>) {
-      const target = event.target as HTMLDivElement
-      const boardName = target.dataset.boardname
+   const navigate = useNavigate()
+
+   function onLinkClick(event: React.MouseEvent<HTMLAnchorElement>) {
+      const target = event.target as HTMLAnchorElement
+      const boardId = target.dataset.boardid
       setSearchOpen(false)
 
-      if (boardName) {
-         const currentBoard = boardsList.find(
-            (board) => board.data.boardName === boardName
-         )
+      if (boardId) {
+         const currentBoard = boardsList.find((board) => board.id === boardId)
 
-         if (currentBoard !== undefined) {
-            setBoard(currentBoard)
+         if (currentBoard) {
+            setCurrentBoard(currentBoard)
 
-            if (
-               Cookies.get("IlyaSemikashevKanbanBoard_BoardId") !== undefined
-            ) {
+            if (Cookies.get("IlyaSemikashevKanbanBoard_BoardId")) {
                Cookies.remove("IlyaSemikashevKanbanBoard_BoardId")
             }
 
@@ -35,13 +35,15 @@ export default function Search() {
                   expires: 7,
                }
             )
+
+            // Navigate to the new route after the currentBoard state is updated
+            navigate(`/boards/${currentBoard.id}`)
          }
       }
    }
-
    return (
       <>
-         {isLoading ? null : (
+         {
             <Box>
                <Autocomplete
                   onOpen={() => setSearchOpen(true)}
@@ -52,22 +54,20 @@ export default function Search() {
                   renderOption={(_props, option) => {
                      if (boardsList.length > 0) {
                         const board = boardsList.find(
-                           (board) => board.data.boardName === option
+                           (board) => board.board_name === option
                         )
                         return (
                            <li key={uuiv4()}>
                               <Link
-                                 to={`/boards/${board?.id}`}
+                                 to="#"
                                  style={{
                                     textDecoration: "none",
                                     color: "black",
                                  }}
+                                 onClick={onLinkClick}
                               >
-                                 <ListItemButton
-                                    onClick={onLinkClick}
-                                    data-boardname={`${board?.data.boardName}`}
-                                 >
-                                    {board?.data.boardName}
+                                 <ListItemButton data-boardid={`${board?.id}`}>
+                                    {board?.board_name}
                                  </ListItemButton>
                               </Link>
                            </li>
@@ -76,7 +76,7 @@ export default function Search() {
                   }}
                   options={
                      boardsList.length > 0
-                        ? boardsList.map((board) => board.data.boardName)
+                        ? boardsList.map((board) => board.board_name)
                         : []
                   }
                   sx={{ width: 300 }}
@@ -84,15 +84,15 @@ export default function Search() {
                      <TextField {...params} label="Available boards" />
                   )}
                   value={
-                     currentBoard.id.length > 0
-                        ? currentBoard.data.boardName
+                     boardsList.some((board) => board.id === currentBoard.id)
+                        ? currentBoard.board_name
                         : ""
                   }
                   autoComplete
                   autoHighlight
                />
             </Box>
-         )}
+         }
       </>
    )
 }

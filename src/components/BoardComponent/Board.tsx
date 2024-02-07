@@ -1,17 +1,31 @@
 import React, { useEffect } from "react"
 import { AppBar, Divider, Grid, List, Paper, Typography } from "@mui/material"
-import { Blocks } from "react-loader-spinner"
+// import { Blocks } from "react-loader-spinner"
 
 import Card from "../CardComponent/Card"
 import { useBoard } from "../../contexts/BoardContext"
 
 import AddCardModal from "../ModalComponents/AddCardModal"
+import Loader from "../Loader"
 
+// Update BoardDataType
+export type BoardDataType = {
+   board_name: string
+   id: string
+}
+
+// Update CardData
+export type CardData = {
+   title: string
+   content: string
+   status: string
+   id: string
+}
+
+// Adjust ColumnProps
 type ColumnProps = {
    name: string
    id: "todoCards" | "progressCards" | "doneCards"
-   key: string
-
    children: React.ReactNode
 }
 
@@ -20,23 +34,18 @@ export default function Board() {
       progressArray,
       todoArray,
       doneArray,
-      isLoading,
+      boardsLoading,
       currentBoard,
-      boardsList,
+      doneCardsLoading,
+      progressCardsLoading,
+      todoCardsLoading,
    } = useBoard()
 
    useEffect(() => {
-      if (currentBoard.id.length > 0) {
-      }
-   }, [currentBoard])
+      console.log(todoArray)
+   }, [todoArray])
 
-   //   const isCardInBoard = (cardId, boardId) => {
-   //      const board = boardsList.find((board) => board.id === boardId)
-
-   //      return board && board.data.cards.includes(cardId)
-   //   }
-
-   const Column = function (props: ColumnProps) {
+   const Column: React.FC<ColumnProps> = function (props) {
       const { name, id, children } = props
 
       return (
@@ -53,12 +62,11 @@ export default function Board() {
                   p: 1,
                   display: "flex",
                   flexDirection: "column",
-                  justifyContent: `${isLoading ? "center" : "space-between"}`,
-                  alignItems: `${isLoading ? "center" : ""}`,
+                  justifyContent: "space-between",
                }}
             >
                <List sx={{ overflowY: "auto", overflowX: "hidden" }}>
-                  {isLoading ? null : (
+                  {boardsLoading ? null : (
                      <AppBar
                         position="sticky"
                         sx={{
@@ -72,7 +80,7 @@ export default function Board() {
                      </AppBar>
                   )}
 
-                  {isLoading ? null : <Divider sx={{ mb: 1 }} />}
+                  {boardsLoading ? null : <Divider sx={{ mb: 1 }} />}
                   {children}
                </List>
 
@@ -83,7 +91,7 @@ export default function Board() {
    }
 
    return (
-      <Grid sx={{ flexGrow: 1 }} container spacing={3} direction="column">
+      <Grid container spacing={3} direction="column">
          <Grid item alignSelf="center">
             <Typography
                variant="h5"
@@ -92,86 +100,62 @@ export default function Board() {
                   textShadow: "0px 1px 4px #23430C",
                }}
             >
-               YOU ARE USING A '{currentBoard.data.boardName}' BOARD
+               {boardsLoading
+                  ? null
+                  : `YOU ARE USING A ${currentBoard.board_name}
+               BOARD`}
             </Typography>
          </Grid>
 
          {/* TO DO */}
          <Grid item container spacing={6}>
-            <Column name="TO DO" id="todoCards" key="toDoCol">
-               {isLoading ? (
-                  <Blocks
-                     height="80"
-                     width="80"
-                     color="#4fa94d"
-                     ariaLabel="blocks-loading"
-                     wrapperClass="blocks-wrapper"
-                     visible={true}
-                  />
+            <Column name="TO DO" id="todoCards" key="todoCol">
+               {todoCardsLoading ? (
+                  <Loader />
                ) : (
-                  todoArray.map((card) => {
-                     const isInBoard = boardsList
-                        .find((board) => board.id === currentBoard.id)
-                        ?.data.cards.includes(card.id)
-
-                     if (isInBoard) {
-                        return (
-                           <Card data={card.data} id={card.id} key={card.id} />
-                        )
-                     }
-                  })
+                  todoArray.map((card) => (
+                     <Card
+                        content={card.content}
+                        status={card.status}
+                        title={card.title}
+                        id={card.id}
+                        key={card.id}
+                     />
+                  ))
                )}
             </Column>
 
             {/* IN PROGRESS */}
             <Column name="IN PROGRESS" id="progressCards" key="progressCol">
-               {isLoading ? (
-                  <Blocks
-                     height="80"
-                     width="80"
-                     color="#4fa94d"
-                     ariaLabel="blocks-loading"
-                     wrapperClass="blocks-wrapper"
-                     visible={true}
-                  />
+               {progressCardsLoading ? (
+                  <Loader />
                ) : (
-                  progressArray.map((card) => {
-                     const isInBoard = boardsList
-                        .find((board) => board.id === currentBoard.id)
-                        ?.data.cards.includes(card.id)
-
-                     if (isInBoard) {
-                        return (
-                           <Card data={card.data} id={card.id} key={card.id} />
-                        )
-                     }
-                  })
+                  progressArray.map((card) => (
+                     <Card
+                        content={card.content}
+                        status={card.status}
+                        title={card.title}
+                        id={card.id}
+                        key={card.id}
+                     />
+                  ))
                )}
             </Column>
 
             {/* DONE */}
             <Column name="DONE" id="doneCards" key="doneCol">
-               {isLoading ? (
-                  <Blocks
-                     height="80"
-                     width="80"
-                     color="#4fa94d"
-                     ariaLabel="blocks-loading"
-                     wrapperClass="blocks-wrapper"
-                     visible={true}
-                  />
+               {doneCardsLoading ? (
+                  <Loader />
                ) : (
-                  doneArray.map((card) => {
-                     const isInBoard = boardsList
-                        .find((board) => board.id === currentBoard.id)
-                        ?.data.cards.includes(card.id)
-
-                     if (isInBoard) {
-                        return (
-                           <Card data={card.data} id={card.id} key={card.id} />
-                        )
-                     }
-                  })
+                  doneArray.map((card) => (
+                     <Card
+                        content={card.content}
+                        status={card.status}
+                        title={card.title}
+                        id={card.id}
+                        key={card.id}
+                     />
+                  ))
                )}
             </Column>
          </Grid>

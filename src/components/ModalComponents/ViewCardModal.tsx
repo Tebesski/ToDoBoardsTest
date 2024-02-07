@@ -1,3 +1,4 @@
+import React from "react"
 import {
    AppBar,
    Dialog,
@@ -11,48 +12,86 @@ import {
    Toolbar,
    Tooltip,
    Typography,
+   SelectChangeEvent,
 } from "@mui/material"
-import { SelectChangeEvent } from "@mui/material"
-import React from "react"
-import { CardData } from "../CardComponent/Card"
 
-type ViewCardModalType = CardData & {
-   isExpanded: boolean
-   openViewCard: React.MouseEventHandler
-   closeViewCard: React.MouseEventHandler
-   editCard: React.MouseEventHandler
-   isBeingEdited: boolean
-   exitEdit: React.MouseEventHandler
-   submitChanges: React.MouseEventHandler
+import { useBoard } from "../../contexts/BoardContext"
+
+type ViewCardModalType = {
+   viewCard: boolean
+   setViewCard: React.Dispatch<boolean>
+   handleStartEditCard: React.MouseEventHandler
+   startEditCard: boolean
+   setStartEditCard: React.Dispatch<boolean>
    changeContent: (event: React.ChangeEvent<HTMLTextAreaElement>) => void
    changeTitle: (event: React.ChangeEvent<HTMLTextAreaElement>) => void
    changeStatus: (event: SelectChangeEvent) => void
-   content: {
+   editData: {
       title: string
       content: string
       status: string
    }
+   viewData: {
+      title: string
+      content: string
+      status: string
+   }
+   cardId: string
 }
 
 export default function ViewCardModal(props: ViewCardModalType) {
    const {
-      data,
-      isExpanded,
+      editData,
+      viewData,
+      cardId,
+      viewCard,
+      setViewCard,
+      startEditCard,
+      setStartEditCard,
+      handleStartEditCard,
       changeContent,
       changeTitle,
       changeStatus,
-      closeViewCard,
-      editCard,
-      isBeingEdited,
-      exitEdit,
-      submitChanges,
-      content,
    } = props
+
+   const { BASE_URL, editCard } = useBoard()
+
+   function handleCloseViewCard() {
+      setViewCard(false)
+      setStartEditCard(false)
+   }
+
+   async function handleSubmitEditChanges() {
+      try {
+         await fetch(`${BASE_URL}/api/cards/${cardId}/title`, {
+            method: "PATCH",
+            headers: {
+               "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ title: editData.title }),
+         })
+
+         await fetch(`${BASE_URL}/api/cards/${cardId}/content`, {
+            method: "PATCH",
+            headers: {
+               "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ content: editData.content }),
+         })
+
+         const updatedCard = { ...editData, id: cardId }
+         editCard(cardId, updatedCard)
+
+         setStartEditCard(false)
+      } catch (error) {
+         console.error("Error updating card title:", error)
+      }
+   }
 
    return (
       <Dialog
-         open={isExpanded}
-         onClose={closeViewCard}
+         open={viewCard}
+         onClose={handleCloseViewCard}
          aria-labelledby="modal-modal-title"
          aria-describedby="modal-modal-description"
          fullWidth={true}
@@ -70,7 +109,7 @@ export default function ViewCardModal(props: ViewCardModalType) {
             }}
          >
             <AppBar
-               position={`${isBeingEdited ? "static" : "sticky"}`}
+               position={`${startEditCard ? "static" : "sticky"}`}
                sx={{
                   userSelect: "none",
                   fontSize: 18,
@@ -83,7 +122,7 @@ export default function ViewCardModal(props: ViewCardModalType) {
                   variant="dense"
                   sx={{ justifyContent: "space-between" }}
                >
-                  {isBeingEdited ? (
+                  {startEditCard ? (
                      <>
                         <TextField
                            variant="standard"
@@ -98,7 +137,7 @@ export default function ViewCardModal(props: ViewCardModalType) {
                               },
                               input: { color: "#f8f8ff" },
                            }}
-                           value={content.title}
+                           value={editData.title}
                            onChange={changeTitle}
                         />
                         <div>
@@ -106,7 +145,7 @@ export default function ViewCardModal(props: ViewCardModalType) {
                               <IconButton
                                  color="inherit"
                                  sx={{ p: 1 }}
-                                 onClick={submitChanges}
+                                 onClick={handleSubmitEditChanges}
                               >
                                  <Icon
                                     baseClassName="fas"
@@ -119,7 +158,7 @@ export default function ViewCardModal(props: ViewCardModalType) {
                               <IconButton
                                  color="inherit"
                                  sx={{ p: 1 }}
-                                 onClick={exitEdit}
+                                 onClick={() => setStartEditCard(false)}
                               >
                                  <Icon
                                     baseClassName="fas"
@@ -131,13 +170,13 @@ export default function ViewCardModal(props: ViewCardModalType) {
                      </>
                   ) : (
                      <>
-                        <Typography variant="h6">{data.title}</Typography>
+                        <Typography variant="h6">{viewData.title}</Typography>
                         <IconButton
                            size="small"
                            color="inherit"
                            edge="end"
                            sx={{ p: 1 }}
-                           onClick={editCard}
+                           onClick={handleStartEditCard}
                         >
                            <Icon
                               baseClassName="fas"
@@ -150,22 +189,22 @@ export default function ViewCardModal(props: ViewCardModalType) {
             </AppBar>
 
             <Paper>
-               {isBeingEdited ? (
+               {startEditCard ? (
                   <TextField
                      multiline
                      sx={{ minWidth: 520 }}
-                     value={content.content}
+                     value={editData.content}
                      onChange={changeContent}
                   ></TextField>
                ) : (
-                  <Typography variant="body1">{data.content}</Typography>
+                  <Typography variant="body1">{viewData.content}</Typography>
                )}
             </Paper>
 
             <Select
                sx={{ mt: 2 }}
                id="cardStatus"
-               defaultValue={data.status}
+               defaultValue={viewData.status}
                onChange={changeStatus}
             >
                <MenuItem value="todoCards">TO DO</MenuItem>
