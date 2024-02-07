@@ -23,7 +23,7 @@ import {
 } from "../reducers/fetchReducer"
 import ACTIONS from "../types/actionTypes"
 
-const BASE_URL = "http://localhost:9000"
+const BASE_URL = "https://kanban-todo-test.lm.r.appspot.com"
 
 const BoardContext = createContext<BoardContextType>({
    todoArray: [],
