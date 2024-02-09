@@ -20,10 +20,10 @@ import ViewCardModal from "../ModalComponents/ViewCardModal"
 
 import { CardData } from "../../types/contextTypes"
 import ACTIONS from "../../types/actionTypes"
+import { removeCard, updateCardStatus, updateCardTitle } from "../../api/api"
 
 export default function Card({ content, status, title, id }: CardData) {
-   const { BASE_URL, currentBoard, changeCardStatus, dispatchCardsArray } =
-      useBoard()
+   const { changeCardStatus, dispatchCardsArray, currentBoard } = useBoard()
 
    const [titleEdit, setTitleEdit] = useState({ on: false, title: "" })
    const [card, setCard] = useState({
@@ -162,13 +162,7 @@ export default function Card({ content, status, title, id }: CardData) {
 
       async function handleSubmitNewStatus() {
          try {
-            await fetch(`${BASE_URL}/api/cards/${id}/status`, {
-               method: "PATCH",
-               headers: {
-                  "Content-Type": "application/json",
-               },
-               body: JSON.stringify({ status: newStatus }),
-            })
+            await updateCardStatus(id, newStatus)
             changeCardStatus(id, newStatus)
          } catch (error) {
             console.error("Error updating card status:", error)
@@ -181,9 +175,7 @@ export default function Card({ content, status, title, id }: CardData) {
    // REMOVE CARD VIA CARD'S PREVIEW INTERFACE
    async function handleRemoveCard() {
       try {
-         await fetch(`${BASE_URL}/api/boards/${currentBoard.id}/cards/${id}`, {
-            method: "DELETE",
-         })
+         await removeCard(currentBoard.id, id)
 
          dispatchCardsArray({
             type: ACTIONS.REMOVE_CARD,
@@ -219,13 +211,7 @@ export default function Card({ content, status, title, id }: CardData) {
    async function handleSubmitPreviewTitleEdit() {
       try {
          if (titleEdit.title.length > 0) {
-            const response = await fetch(`${BASE_URL}/api/cards/${id}/title`, {
-               method: "PATCH",
-               headers: {
-                  "Content-Type": "application/json",
-               },
-               body: JSON.stringify({ title: titleEdit.title }),
-            })
+            const response = await updateCardTitle(id, titleEdit.title)
 
             if (response.ok) {
                const updatedCard = {
@@ -241,11 +227,6 @@ export default function Card({ content, status, title, id }: CardData) {
                })
 
                setTitleEdit((oldValue) => ({ ...oldValue, on: false }))
-            } else {
-               console.error(
-                  "Failed to update card title:",
-                  response.statusText
-               )
             }
          } else {
             setTitleError(true)

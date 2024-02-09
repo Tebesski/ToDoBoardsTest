@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"
+import React from "react"
 import { AppBar, Divider, Grid, List, Paper, Typography } from "@mui/material"
 // import { Blocks } from "react-loader-spinner"
 
@@ -40,10 +40,6 @@ export default function Board() {
       progressCardsLoading,
       todoCardsLoading,
    } = useBoard()
-
-   useEffect(() => {
-      console.log(todoArray)
-   }, [todoArray])
 
    const Column: React.FC<ColumnProps> = function (props) {
       const { name, id, children } = props

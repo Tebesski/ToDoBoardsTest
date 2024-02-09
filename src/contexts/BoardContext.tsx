@@ -22,8 +22,11 @@ import {
    initialFetchReducerState,
 } from "../reducers/fetchReducer"
 import ACTIONS from "../types/actionTypes"
+import { fetchAllBoards, fetchAllCards } from "../api/api"
 
-const BASE_URL = "https://kanban-todo-test.lm.r.appspot.com"
+const API_URL = import.meta.env.DEV
+   ? import.meta.env.API_URL
+   : (import.meta.env.VITE_API_URL as string)
 
 const BoardContext = createContext<BoardContextType>({
    todoArray: [],
@@ -32,7 +35,7 @@ const BoardContext = createContext<BoardContextType>({
    boardsList: [],
    currentBoard: { board_name: "", id: "" },
    setCurrentBoard: () => {},
-   BASE_URL: BASE_URL,
+   API_URL: API_URL,
    boardsLoading: false,
    todoCardsLoading: false,
    progressCardsLoading: false,
@@ -112,7 +115,6 @@ function BoardProvider({ children }: BoardProviderProps) {
 
    const setBoardsList = (newBoardsList: BoardDataType[]) => {
       dispatch({ type: ACTIONS.SET_BOARDS_LIST, payload: newBoardsList })
-      console.log(newBoardsList)
 
       fetchBoards()
    }
@@ -138,8 +140,7 @@ function BoardProvider({ children }: BoardProviderProps) {
       )
 
       try {
-         const result = await fetch(`${BASE_URL}/api/boards/${boardId}/cards`)
-         const cards = await result.json()
+         const cards = await fetchAllCards(boardId)
 
          cards.forEach((value: CardData) => {
             switch (value.status) {
@@ -184,21 +185,18 @@ function BoardProvider({ children }: BoardProviderProps) {
 
    async function fetchBoards() {
       dispatchLoading(ACTIONS.SET_BOARDS_LOADING, true)
-      console.log(boardsLoading)
 
       try {
-         const res = await fetch(`${BASE_URL}/api/boards`)
-         const data = await res.json()
+         const boards = await fetchAllBoards()
 
          dispatch({
             type: ACTIONS.SET_BOARDS_LIST,
-            payload: data,
+            payload: boards,
          })
       } catch (error) {
          console.error("Failed to fetch boards:", error)
       } finally {
          dispatchLoading(ACTIONS.SET_BOARDS_LOADING, false)
-         console.log(boardsLoading)
       }
    }
 
@@ -237,7 +235,7 @@ function BoardProvider({ children }: BoardProviderProps) {
             boardsList: boardsList,
             currentBoard: currentBoard,
             setCurrentBoard: setCurrentBoard,
-            BASE_URL: BASE_URL,
+            API_URL: API_URL,
             boardsLoading: boardsLoading,
             todoCardsLoading: todoCardsLoading,
             progressCardsLoading: progressCardsLoading,

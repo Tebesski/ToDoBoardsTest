@@ -15,13 +15,14 @@ import AddIcon from "@mui/icons-material/Add"
 
 import { useBoard } from "../../contexts/BoardContext"
 import { CardData } from "../../types/contextTypes"
+import { addNewCard } from "../../api/api"
 
 export default function AddCardModal({
    columnType,
 }: {
    columnType: "todoCards" | "progressCards" | "doneCards"
 }) {
-   const { BASE_URL, currentBoard, addCard } = useBoard()
+   const { currentBoard, addCard } = useBoard()
    const [open, setOpen] = useState(false)
    const [cardData, setCardData] = useState<CardData>({
       title: "",
@@ -40,7 +41,7 @@ export default function AddCardModal({
    }
 
    const handleSetNewCard = async () => {
-      if (!cardData.title || !cardData.status) {
+      if (!cardData.title || !cardData.content) {
          setAlert(true)
          setTimeout(() => {
             setAlert(false)
@@ -48,23 +49,9 @@ export default function AddCardModal({
          return
       }
       try {
-         const response = await fetch(`${BASE_URL}/api/cards`, {
-            method: "POST",
-            headers: {
-               "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-               ...cardData,
-               board_id: currentBoard.id,
-            }),
-         })
-         if (response.ok) {
-            const newCard = await response.json()
-            addCard(newCard)
-            setOpen(false)
-         } else {
-            console.error("Failed to add card:", response.statusText)
-         }
+         const newCard = await addNewCard(cardData, currentBoard.id)
+         addCard(newCard)
+         setOpen(false)
       } catch (error) {
          console.error("Error adding card:", error)
       }
@@ -145,7 +132,7 @@ export default function AddCardModal({
             {alert && (
                <Fade in={alert}>
                   <Alert severity="error">
-                     Please, enter card's title and status
+                     Please, fill out card's title and content!
                   </Alert>
                </Fade>
             )}

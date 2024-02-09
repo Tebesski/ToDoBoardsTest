@@ -19,13 +19,13 @@ import { Button } from "@mui/material"
 import { useBoard } from "../../contexts/BoardContext"
 import EditBoardModal from "./EditBoardModal"
 import { BoardDataType } from "../../types/contextTypes"
+import { fetchCardsCountByBoard, removeBoard } from "../../api/api"
 
 function Row(props: { row: BoardDataType }) {
    const { row } = props
    const navigate = useNavigate()
 
    const {
-      BASE_URL,
       boardsLoading,
       deleteBoard,
       boardsList,
@@ -39,20 +39,11 @@ function Row(props: { row: BoardDataType }) {
 
    const nameRef = useRef<HTMLElement>()
 
-   // FETCH CARDS COUNT BY BOARD
-   async function fetchCardsCountByBoard(): Promise<number> {
-      const response = await fetch(
-         `${BASE_URL}/api/boards/${row.id}/cards-count`
-      )
-      const data = await response.json()
-      return data.cards_count
-   }
-
    // SET CARDS COUNT
    useEffect(() => {
       async function fetchData() {
          if (!boardsLoading) {
-            const count = await fetchCardsCountByBoard()
+            const count = await fetchCardsCountByBoard(row.id)
             setCardsCount(count)
          }
       }
@@ -62,9 +53,7 @@ function Row(props: { row: BoardDataType }) {
    // DELETE BOARD
    async function handleDeleteBoard() {
       try {
-         await fetch(`${BASE_URL}/api/boards/${row.id}`, {
-            method: "DELETE",
-         })
+         await removeBoard(row.id)
 
          const updatedBoardsList = boardsList.filter(
             (board) => board.id !== row.id

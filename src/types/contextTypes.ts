@@ -17,7 +17,7 @@ export type BoardContextType = {
    boardsList: BoardDataType[]
    currentBoard: BoardDataType
    setCurrentBoard: React.Dispatch<React.SetStateAction<BoardDataType>>
-   BASE_URL: string
+   API_URL: string
    boardsLoading: boolean
    todoCardsLoading: boolean
    progressCardsLoading: boolean
@@ -61,14 +61,15 @@ export type LoadingReducerState = {
    doneCardsLoading: boolean
 }
 
-export type LoadingReducerAction =
-   | { type: "SET_BOARDS_LOADING"; payload: boolean }
-   | { type: "SET_TODO_CARDS_LOADING"; payload: boolean }
-   | { type: "SET_PROGRESS_CARDS_LOADING"; payload: boolean }
-   | { type: "SET_DONE_CARDS_LOADING"; payload: boolean }
+export enum LoadingActionTypes {
+   SET_BOARDS_LOADING = "SET_BOARDS_LOADING",
+   SET_TODO_CARDS_LOADING = "SET_TODO_CARDS_LOADING",
+   SET_PROGRESS_CARDS_LOADING = "SET_PROGRESS_CARDS_LOADING",
+   SET_DONE_CARDS_LOADING = "SET_DONE_CARDS_LOADING",
+}
 
-export type LoadingActionTypes =
-   | "SET_TODO_CARDS_LOADING"
-   | "SET_PROGRESS_CARDS_LOADING"
-   | "SET_DONE_CARDS_LOADING"
-   | "SET_BOARDS_LOADING"
+export type LoadingReducerAction =
+   | { type: LoadingActionTypes.SET_BOARDS_LOADING; payload: boolean }
+   | { type: LoadingActionTypes.SET_TODO_CARDS_LOADING; payload: boolean }
+   | { type: LoadingActionTypes.SET_PROGRESS_CARDS_LOADING; payload: boolean }
+   | { type: LoadingActionTypes.SET_DONE_CARDS_LOADING; payload: boolean }

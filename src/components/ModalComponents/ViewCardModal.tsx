@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import {
    AppBar,
    Dialog,
@@ -13,9 +13,12 @@ import {
    Tooltip,
    Typography,
    SelectChangeEvent,
+   Alert,
+   Fade,
 } from "@mui/material"
 
 import { useBoard } from "../../contexts/BoardContext"
+import { updateCardContent, updateCardTitle } from "../../api/api"
 
 type ViewCardModalType = {
    viewCard: boolean
@@ -54,7 +57,8 @@ export default function ViewCardModal(props: ViewCardModalType) {
       changeStatus,
    } = props
 
-   const { BASE_URL, editCard } = useBoard()
+   const { editCard } = useBoard()
+   const [alert, setAlert] = useState(false)
 
    function handleCloseViewCard() {
       setViewCard(false)
@@ -62,22 +66,17 @@ export default function ViewCardModal(props: ViewCardModalType) {
    }
 
    async function handleSubmitEditChanges() {
+      if (editData.title.length < 1 || editData.content.length < 1) {
+         setAlert(true)
+         setTimeout(() => {
+            setAlert(false)
+         }, 3000)
+         return
+      }
       try {
-         await fetch(`${BASE_URL}/api/cards/${cardId}/title`, {
-            method: "PATCH",
-            headers: {
-               "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ title: editData.title }),
-         })
+         await updateCardTitle(cardId, editData.title)
 
-         await fetch(`${BASE_URL}/api/cards/${cardId}/content`, {
-            method: "PATCH",
-            headers: {
-               "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ content: editData.content }),
-         })
+         await updateCardContent(cardId, editData.content)
 
          const updatedCard = { ...editData, id: cardId }
          editCard(cardId, updatedCard)
@@ -108,6 +107,13 @@ export default function ViewCardModal(props: ViewCardModalType) {
                flexDirection: "column",
             }}
          >
+            {alert && (
+               <Fade in={alert}>
+                  <Alert severity="error">
+                     Please, fill out card's title and content!
+                  </Alert>
+               </Fade>
+            )}
             <AppBar
                position={`${startEditCard ? "static" : "sticky"}`}
                sx={{

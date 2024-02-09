@@ -13,6 +13,7 @@ import {
 
 import { useBoard } from "../../contexts/BoardContext"
 import BoardsTable from "./BoardsTable"
+import { addNewBoard } from "../../api/api"
 
 type ViewBoardsModalPropsType = {
    viewBoardOpen: boolean
@@ -23,7 +24,7 @@ export default function ViewBoardsModal({
    viewBoardOpen,
    setViewBoardOpen,
 }: ViewBoardsModalPropsType) {
-   const { BASE_URL, setBoardsList, boardsList } = useBoard()
+   const { setBoardsList, boardsList } = useBoard()
 
    const [boardName, setBoardName] = useState("")
    const [success, setSuccess] = useState(false)
@@ -39,16 +40,9 @@ export default function ViewBoardsModal({
          return
       }
       try {
-         const response = await fetch(`${BASE_URL}/api/boards`, {
-            method: "POST",
-            headers: {
-               "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ boardName: name }),
-         })
-         const data = await response.json()
-         if (data.success) {
-            console.log(boardName)
+         const newBoard = await addNewBoard(name)
+
+         if (newBoard.success) {
             setBoardName("")
             setSuccess(true)
             setTimeout(() => {
@@ -58,7 +52,7 @@ export default function ViewBoardsModal({
             setBoardsList([
                ...boardsList,
                {
-                  id: data.boardId,
+                  id: newBoard.boardId,
                   board_name: name,
                },
             ])
