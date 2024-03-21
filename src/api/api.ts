@@ -2,7 +2,7 @@ import { CardData } from "../types/contextTypes"
 
 export async function updateCardStatus(id: string, newStatus: string) {
    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/cards/${id}/status`,
+      `${process.env.API_URL}/api/cards/${id}/status`,
       {
          method: "PATCH",
          headers: {
@@ -21,7 +21,7 @@ export async function updateCardStatus(id: string, newStatus: string) {
 
 export async function removeCard(boardId: string, cardId: string) {
    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/boards/${boardId}/cards/${cardId}`,
+      `${process.env.API_URL}/api/boards/${boardId}/cards/${cardId}`,
       {
          method: "DELETE",
       }
@@ -35,7 +35,7 @@ export async function removeCard(boardId: string, cardId: string) {
 }
 
 export async function addNewCard(cardData: CardData, boardId: string) {
-   const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cards`, {
+   const response = await fetch(`${process.env.API_URL}/api/cards`, {
       method: "POST",
       headers: {
          "Content-Type": "application/json",
@@ -55,7 +55,7 @@ export async function addNewCard(cardData: CardData, boardId: string) {
 
 export async function fetchCardsCountByBoard(boardId: string) {
    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/boards/${boardId}/cards-count`
+      `${process.env.API_URL}/api/boards/${boardId}/cards-count`
    )
 
    if (!response.ok) {
@@ -68,7 +68,7 @@ export async function fetchCardsCountByBoard(boardId: string) {
 
 export async function removeBoard(boardId: string) {
    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/boards/${boardId}`,
+      `${process.env.API_URL}/api/boards/${boardId}`,
       {
          method: "DELETE",
       }
@@ -83,7 +83,7 @@ export async function removeBoard(boardId: string) {
 
 export async function updateBoardTitle(boardId: string, newTitle: string) {
    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/boards/${boardId}`,
+      `${process.env.API_URL}/api/boards/${boardId}`,
       {
          method: "PATCH",
          headers: {
@@ -101,7 +101,7 @@ export async function updateBoardTitle(boardId: string, newTitle: string) {
 }
 
 export async function addNewBoard(boardName: string) {
-   const response = await fetch(`${import.meta.env.VITE_API_URL}/api/boards`, {
+   const response = await fetch(`${process.env.API_URL}/api/boards`, {
       method: "POST",
       headers: {
          "Content-Type": "application/json",
@@ -118,7 +118,7 @@ export async function addNewBoard(boardName: string) {
 
 export async function updateCardTitle(id: string, newTitle: string) {
    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/cards/${id}/title`,
+      `${process.env.API_URL}/api/cards/${id}/title`,
       {
          method: "PATCH",
          headers: {
@@ -137,7 +137,7 @@ export async function updateCardTitle(id: string, newTitle: string) {
 
 export async function updateCardContent(id: string, newContent: string) {
    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/cards/${id}/content`,
+      `${process.env.API_URL}/api/cards/${id}/content`,
       {
          method: "PATCH",
          headers: {
@@ -156,7 +156,7 @@ export async function updateCardContent(id: string, newContent: string) {
 
 export async function fetchAllCards(boardId: string) {
    const result = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/boards/${boardId}/cards`
+      `${process.env.API_URL}/api/boards/${boardId}/cards`
    )
    const cards = await result.json()
 
@@ -164,7 +164,7 @@ export async function fetchAllCards(boardId: string) {
 }
 
 export async function fetchAllBoards() {
-   const result = await fetch(`${import.meta.env.VITE_API_URL}/api/boards`)
+   const result = await fetch(`${process.env.API_URL}/api/boards`)
    const boards = await result.json()
 
    return boards
